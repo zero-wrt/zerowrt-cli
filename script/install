@@ -1,0 +1,86 @@
+#!/bin/bash /etc/rc.common
+# Copyright (C) 2000 ZeroDream
+
+# InstallZeroWrtCli
+
+# --------------------------------------------------
+
+execName='zerowrt'
+execPath="/usr/bin/$execName"
+
+appName='zerowrt-cli'
+tmpPath='zerowrt-tmp' && mkdir -p "$tmpPath"
+
+owner='zero-wrt'
+repo='zerowrt-cli'
+
+# --------------------------------------------------
+
+echo 'installing...'
+
+if [[ $# -ge 2 ]]; then
+  echo 'error: invalid param' && exit 1
+fi
+
+method=$1 # online | local
+if [[ -z "$method" ]]; then
+  PS3='please enter: '
+  opts=('online' 'local')
+  select opt in "${opts[@]}"; do
+    if [[ $REPLY =~ ^[1-9][0-9]*$ ]] && ((REPLY <= ${#opts[@]})); then
+      method=$opt
+      break
+    else
+      echo 'error: input error'
+    fi
+  done
+fi
+
+# --------------------------------------------------
+
+arch=$(uname -m)
+case "$arch" in
+x86_64 | amd64)
+  plat='linux-amd64'
+  ;;
+aarch64 | arm64 | armv8*)
+  plat='linux-arm64'
+  ;;
+*)
+  echo 'error: unsupported platform' && exit 1
+  ;;
+esac
+
+progName="$appName-$plat"
+progPath="$tmpPath/$progName"
+
+# --------------------------------------------------
+
+if [[ "$method" == "online" ]]; then
+  wget -c -t 3 -P "$tmpPath" "https://github.com/$owner/$repo/releases/latest/download/$progName"
+fi
+
+# --------------------------------------------------
+
+if [[ ! -f "$progPath" ]]; then
+  echo 'error: file does not exist' && exit 1
+fi
+
+if ! chmod +x "$progPath"; then
+  echo "error: failed to add execute permission: $progPath" && exit 1
+fi
+
+args=('install')
+"$progPath" "${args[@]}" || exit 1
+
+if ! cp -a "$progPath" "$execPath"; then
+  echo 'error: failed to copy prog' && exit 1
+fi
+
+if ! chmod +x "$execPath"; then
+  echo "error: failed to add execute permission: $execPath" && exit 1
+fi
+
+# --------------------------------------------------
+
+echo 'installed successfully'
